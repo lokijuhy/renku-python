@@ -22,7 +22,10 @@ from collections import deque
 from pathlib import Path
 from typing import List, Tuple, Union
 
+
+from renku.core.utils.zodb import ZODBConnectionHandler
 import DirectoryStorage.Storage as DirStorage
+import zc.zlibstorage
 import networkx
 import persistent
 import transaction
@@ -47,6 +50,7 @@ class DependencyGraph(persistent.Persistent):
         self._graph = networkx.DiGraph()
         self._graph.add_nodes_from(self._plans)
         self._connect_all_nodes()
+        self._zodb_connection = None
 
     @property
     def plans(self):
@@ -167,15 +171,12 @@ class DependencyGraph(persistent.Persistent):
         return sorted_nodes, list(nodes_with_deleted_inputs)
 
     @classmethod
-    def from_file(cls, path, format="jsonld"):
+    def from_file(cls, path, format="zodb"):
         """Create an instance from a file."""
         custom.assert_valid_format(format)
 
         if format == "zodb":
-            storage = DirStorage.Storage("./dirstore")
-
-            db = ZODB.DB(storage)
-            connection = db.open()
+            connection = ZODBConnectionHandler.get_connection()
             root = connection.root
 
             if "dependency_graph" not in connection.root():
@@ -227,24 +228,21 @@ class DependencyGraph(persistent.Persistent):
         """Create JSON-LD."""
         return DependencyGraphSchema(flattened=True).dump(self)
 
-    def to_file(self, path=None, format="jsonld"):
+    def to_file(self, path=None, format="zodb"):
         """Write to file."""
         custom.assert_valid_format(format)
         if format == "zodb":
-            storage = DirStorage.Storage("./dirstore")
-
-            db = ZODB.DB(storage)
-            connection = db.open()
+            connection = ZODBConnectionHandler.get_connection()
             root = connection.root
 
             root.dependency_graph = self
             transaction.commit()
             return
-
-        path = path or self._path
-        data = self.to_json() if format == "json" else self.to_jsonld()
-        with open(path, "w", encoding="utf-8") as file_:
-            json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
+        else:
+            path = path or self._path
+            data = self.to_json() if format == "json" else self.to_jsonld()
+            with open(path, "w", encoding="utf-8") as file_:
+                json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
 
 class DependencyGraphSchema(JsonLDSchema):

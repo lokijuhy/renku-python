@@ -24,11 +24,14 @@ from pathlib import Path
 from typing import List, Union
 from urllib.parse import quote, urljoin, urlparse
 
+from renku.core.utils.zodb import ZODBConnectionHandler
 import BTrees.OOBTree
 import persistent
 from git import Git, GitCommandError
 from marshmallow import EXCLUDE
-from ZODB import DB, FileStorage
+from ZODB import DB
+import DirectoryStorage.Storage as DirStorage
+import zc.zlibstorage
 
 from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
@@ -393,7 +396,7 @@ class ActivityCollection(persistent.Persistent):
         self._activities.append(activity)
 
     @classmethod
-    def from_file(cls, path, format="jsonld"):
+    def from_file(cls, path, format="zope"):
         """Return an instance from a file."""
         custom.assert_valid_format(format)
 
@@ -414,7 +417,7 @@ class ActivityCollection(persistent.Persistent):
 
         return self
 
-    def to_file(self, path=None, format="jsonld", **kwargs):
+    def to_file(self, path=None, format="zope", **kwargs):
         """Write to file."""
         custom.assert_valid_format(format)
 
@@ -508,32 +511,22 @@ class ActivityCollection(persistent.Persistent):
     @classmethod
     def from_zope(cls, path):
         """Create ZODB file."""
-        storage = FileStorage.FileStorage(str(path))
-        db = DB(storage)
-        connection = db.open()
+        connection = ZODBConnectionHandler.get_connection()
         root = connection.root()
         self = root["ActivityCollection"]
-        connection.close()
-        db.close()
-        storage.close()
         return self
 
     def to_zope(self, path):
         """Create an instance from ZODB file."""
         import transaction
 
-        storage = FileStorage.FileStorage(str(path))
-        db = DB(storage)
-        connection = db.open()
+        connection = ZODBConnectionHandler.get_connection()
         root = connection.root()
 
         self._remove_weak_references()
 
         root["ActivityCollection"] = self
         transaction.commit()
-        connection.close()
-        db.close()
-        storage.close()
 
     @classmethod
     def from_custom(cls, path):

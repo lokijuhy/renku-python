@@ -24,6 +24,8 @@ from collections import deque
 from pathlib import Path
 from typing import Union
 
+
+from renku.core.utils.zodb import ZODBConnectionHandler
 import BTrees.OOBTree
 import DirectoryStorage.Storage as DirStorage
 import transaction
@@ -122,10 +124,7 @@ class ProvenanceGraph:
         custom.assert_valid_format(format)
 
         if format == "zodb":
-            storage = zc.zlibstorage.ZlibStorage(DirStorage.Storage("./dirstore"))
-
-            db = ZODB.DB(storage)
-            connection = db.open()
+            connection = ZODBConnectionHandler.get_connection()
             root = connection.root
 
             if "activity_collections" not in connection.root():
@@ -133,7 +132,6 @@ class ProvenanceGraph:
             activities = []
             for collection in root.activity_collections:
                 activities.extend(root.activity_collections[collection].activities)
-            connection.close()
 
             self = ProvenanceGraph(activities=activities)
             self._activities.sort(key=lambda e: e.order)
@@ -197,7 +195,7 @@ class ProvenanceGraph:
         """Create JSON-LD."""
         return ProvenanceGraphSchema(flattened=True).dump(self)
 
-    def to_file(self, path=None, format="jsonld"):
+    def to_file(self, path=None, format="zodb"):
         """Write an instance to file."""
         custom.assert_valid_format(format)
 
@@ -207,22 +205,12 @@ class ProvenanceGraph:
         path = path or self._path
 
         if format == "zodb":
-            storage = DirStorage.Storage("./dirstore")
 
-            db = ZODB.DB(storage)
-            connection = db.open()
-            root = connection.root
-
-            if "activity_collections" not in connection.root():
-                root.activity_collections = BTrees.OOBTree.BTree()
-
-            root.activity_collections[uuid.uuid4().hex]
-            transaction.commit()
             return
-
-        data = self.to_json() if format == "json" else self.to_jsonld()
-        with open(path, "w", encoding="utf-8") as file_:
-            json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
+        else:
+            data = self.to_json() if format == "json" else self.to_jsonld()
+            with open(path, "w", encoding="utf-8") as file_:
+                json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
 
     @property
     def rdf_graph(self):
