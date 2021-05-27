@@ -24,8 +24,6 @@ from collections import deque
 from pathlib import Path
 from typing import Union
 
-
-from renku.core.utils.zodb import ZODBConnectionHandler
 import BTrees.OOBTree
 import DirectoryStorage.Storage as DirStorage
 import transaction
@@ -37,6 +35,7 @@ from rdflib import ConjunctiveGraph
 from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.provenance.activity import Activity, ActivityCollection, ActivityJsonSchema, ActivitySchema
+from renku.core.utils.zodb import ZODBConnectionHandler
 
 
 class ProvenanceGraph:
@@ -44,9 +43,32 @@ class ProvenanceGraph:
 
     def __init__(self, activities=None, _activities=None, id=None):  # FIXME: remove id
         """Set uninitialized properties."""
-        self._activities = activities or _activities or []
+        connection = ZODBConnectionHandler.get_connection()
+
+        if "activities" not in connection.root():
+            connection.root.activities = BTrees.OOBTree.BTree()
+        if "plan_activity_index" not in connection.root():
+            connection.root.plan_activity_index = BTrees.OOBTree.BTree()
+
+        self._activities = connection.root.activities
+
+        if not activities and _activities:
+            activities = _activities
+
+        if activities:
+            for activity in activities:
+                connection.root.activities[activity.id_] = activity
+                plan_id = activity.association.plan.id_
+
+                if (
+                    plan_id not in connection.root.plan_activity_index
+                    or connection.root.plan_activity_index[plan_id].order < activity.order
+                ):
+                    connection.root.plan_activity_index[plan_id] = activity
+
+        # self._activities = activities or _activities or []
         self._path = None
-        self._order = 0 if len(self._activities) == 0 else max([a.order for a in self._activities])
+        self._order = 0 if len(self._activities) == 0 else max([a.order for a in self._activities.values()])
         self._graph = None
         self._loaded = False
         self._custom_bindings = {}
@@ -58,7 +80,7 @@ class ProvenanceGraph:
         """Return list of activities."""
         assert self._loaded
 
-        return self._activities
+        return list(self._activities.values())
 
     @property
     def order(self):
@@ -87,15 +109,33 @@ class ProvenanceGraph:
         activity_collection = node if isinstance(node, ActivityCollection) else ActivityCollection(activities=[node])
 
         for activity in activity_collection.activities:
-            assert not any([a for a in self._activities if a.id_ == activity.id_]), f"Identifier exists {activity.id_}"
+            assert not self._activities.get(activity.id_), f"Identifier exists {activity.id_}"
             self._order += 1
             activity.order = self._order
-            self._activities.append(activity)
+            self._activities[activity.id_] = activity
+
+            connection = ZODBConnectionHandler.get_connection()
+            plan_id = activity.association.plan.id_
+
+            if (
+                plan_id not in connection.root.plan_activity_index
+                or connection.root.plan_activity_index[plan_id].order < activity.order
+            ):
+                connection.root.plan_activity_index[plan_id] = activity
 
     @classmethod
-    def from_file(cls, path, lazy=False, format="jsonld"):
+    def from_file(cls, path, lazy=False, format="zodb"):
         """Return an instance from a JSON file."""
         custom.assert_valid_format(format)
+
+        if format == "zodb":
+            connection = ZODBConnectionHandler.get_connection()
+            root = connection.root
+
+            self = ProvenanceGraph()
+            self._loaded = True
+
+            return self
 
         if Path(path).exists():
             if not lazy:
@@ -119,7 +159,7 @@ class ProvenanceGraph:
         return self
 
     @classmethod
-    def from_provenance_paths(cls, paths, lazy=False, format="jsonld"):
+    def from_provenance_paths(cls, paths, lazy=False, format="zodb"):
         """Return an instance from a set of ActivityCollection JSON file."""
         custom.assert_valid_format(format)
 
@@ -127,14 +167,7 @@ class ProvenanceGraph:
             connection = ZODBConnectionHandler.get_connection()
             root = connection.root
 
-            if "activity_collections" not in connection.root():
-                root.activity_collections = BTrees.OOBTree.BTree()
-            activities = []
-            for collection in root.activity_collections:
-                activities.extend(root.activity_collections[collection].activities)
-
-            self = ProvenanceGraph(activities=activities)
-            self._activities.sort(key=lambda e: e.order)
+            self = ProvenanceGraph()
             self._loaded = True
 
             return self
@@ -205,7 +238,7 @@ class ProvenanceGraph:
         path = path or self._path
 
         if format == "zodb":
-
+            transaction.commit()
             return
         else:
             data = self.to_json() if format == "json" else self.to_jsonld()
@@ -223,7 +256,7 @@ class ProvenanceGraph:
             return
 
         paths = self._provenance_paths if self._split_load else [self._path]
-        self._graph = self._create_graph(paths=paths)
+        self._graph = self._create_graph(activities=self.activities)  # self._create_graph(paths=paths)
 
     def _create_graph(self, paths=None, activities=None):
         graph = ConjunctiveGraph()
@@ -258,12 +291,21 @@ class ProvenanceGraph:
 
     def get_latest_plans_usages(self):
         """Return a list of tuples with path and check of all Usage paths."""
-        plan_orders = self.query(LATEST_PLAN_EXECUTION_ORDER)
-        usages = self.query(ALL_USAGES)
+        # plan_orders = self.query(LATEST_PLAN_EXECUTION_ORDER)
+        # usages = self.query(ALL_USAGES)
 
-        latest_usages = (u for u in usages for o in plan_orders if u[1] == o[1])
+        # latest_usages = (u for u in usages for o in plan_orders if u[1] == o[1])
 
-        return [(str(u[0]), str(u[-2]), str(u[-1])) for u in latest_usages]
+        connection = ZODBConnectionHandler.get_connection()
+
+        # return [(str(u[0]), str(u[-2]), str(u[-1])) for u in latest_usages]
+        return list(
+            {
+                (plan_id, u.entity.path, u.entity.checksum)
+                for plan_id, activity in connection.root.plan_activity_index.items()
+                for u in activity.qualified_usage
+            }
+        )
 
     def query(self, query):
         """Run a SPARQL query and return the result."""

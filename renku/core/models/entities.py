@@ -19,10 +19,11 @@
 
 import os
 import pathlib
-import weakref
 from urllib.parse import quote, urljoin
 
 import attr
+import persistent
+import persistent.wref
 
 from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, rdfs, renku, schema, wfprov
@@ -87,11 +88,13 @@ class CommitMixin:
 
 
 @attr.s(eq=False, order=False)
-class Entity(CommitMixin):
+class Entity(CommitMixin, persistent.Persistent):
     """Represent a data value or item."""
 
     _parent = attr.ib(
-        default=None, kw_only=True, converter=lambda value: weakref.ref(value) if value is not None else None,
+        default=None,
+        kw_only=True,
+        converter=lambda value: persistent.wref.WeakRef(value) if value is not None else None,
     )
 
     checksum = attr.ib(default=None, kw_only=True, type=str)
@@ -212,7 +215,7 @@ class Collection(Entity):
             self.members = self.default_members()
 
         for member in self.members:
-            member._parent = weakref.ref(self)
+            member._parent = persistent.wref.WeakRef(self)
 
 
 class CommitMixinSchema(JsonLDSchema):

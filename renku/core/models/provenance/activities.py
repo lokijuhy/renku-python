@@ -19,11 +19,12 @@
 
 import os
 import urllib
-import weakref
 from collections import OrderedDict
 from pathlib import Path, posixpath
 
 import attr
+import persistent
+import persistent.wref
 from git import NULL_TREE
 from marshmallow import EXCLUDE
 
@@ -91,7 +92,7 @@ def _set_entity_client_commit(entity, client, commit):
 
 
 @attr.s(eq=False, order=False)
-class Activity(CommitMixin):
+class Activity(CommitMixin, persistent.Persistent):
     """Represent an activity in the repository."""
 
     _id = attr.ib(default=None, kw_only=True)
@@ -364,7 +365,7 @@ class Activity(CommitMixin):
 
         if self.generated:
             for g in self.generated:
-                g._activity = weakref.ref(self)
+                g._activity = persistent.wref.WeakRef(self)
 
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
@@ -431,7 +432,7 @@ class ProcessRun(Activity):
             self.annotations = self.plugin_annotations()
 
         if self.association:
-            self.association.plan._activity = weakref.ref(self)
+            self.association.plan._activity = persistent.wref.WeakRef(self)
             plan = self.association.plan
             if not plan.commit:
                 if self.client:
@@ -450,16 +451,20 @@ class ProcessRun(Activity):
             usages = []
             revision = "{0}".format(self.commit)
             for usage in self.qualified_usage:
-                if not usage.commit and "@UNCOMMITTED" in usage._label:
+                if not usage.entity.commit and "@UNCOMMITTED" in usage._label:
                     usages.append(
                         Usage.from_revision(
-                            client=self.client, path=usage.path, role=usage.role, revision=revision, id=usage._id,
+                            client=self.client,
+                            path=usage.entity.path,
+                            role=usage.role,
+                            revision=revision,
+                            id=usage._id,
                         )
                     )
                 else:
                     if not usage.client:
                         usage.entity.set_client(self.client)
-                    if not usage.commit:
+                    if not usage.entity.commit:
                         revision = usage._label.rsplit("@", maxsplit=1)[-1]
                         usage.entity.commit = self.client.repo.commit(revision)
 
@@ -673,7 +678,7 @@ class WorkflowRun(ProcessRun):
             for n in subprocess.nodes:
                 # if self.client and not n.commit and isinstance(n, Entity):
                 #     _set_entity_client_commit(n, self.client, self.commit)
-                # n._activity = weakref.ref(subprocess)
+                # n._activity = persistent.wref.WeakRef(subprocess)
                 yield n
             yield subprocess.association.plan
 

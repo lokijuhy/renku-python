@@ -292,7 +292,7 @@ class Graph(object):
                     if other_activity == activity:
                         continue
                     if any(
-                        g.path == usage.path and g.commit.hexsha == usage.commit.hexsha
+                        g.path == usage.entity.path and g.commit.hexsha == usage.entity.commit.hexsha
                         for g in other_activity.generated
                     ):
                         parents = commit_nodes[activity.commit]

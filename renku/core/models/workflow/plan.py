@@ -24,6 +24,7 @@ import uuid
 from pathlib import Path
 from typing import Sequence
 
+import persistent
 from marshmallow import EXCLUDE
 from werkzeug.utils import secure_filename
 
@@ -45,11 +46,34 @@ from renku.core.models.workflow.parameters import (
 )
 from renku.core.models.workflow.run import Run
 from renku.core.utils.urls import get_host
+from renku.core.utils.zodb import ZODBConnectionHandler
 
 MAX_GENERATED_NAME_LENGTH = 25
 
 
-class Plan:
+def dump_plan(plan, catalog, cache):
+    """Plan --> Token."""
+    return plan.id_
+
+
+def load_plan(token, catalog, cache):
+    """Token --> Plan."""
+    connection = ZODBConnectionHandler.get_connection()
+    return connection.root.plans[token]
+
+
+def dependent_plans(plan, catalog):
+    """Get dependent plans relation."""
+    connection = ZODBConnectionHandler.get_connection()
+    dependents = set()
+
+    for i in plan.inputs:
+        dependents |= set(connection.root.plans_by_generation_path.get(i.consumes, {}).values())
+
+    return dependents
+
+
+class Plan(persistent.Persistent):
     """Represent a `renku run` execution template."""
 
     def __init__(

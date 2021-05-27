@@ -24,14 +24,13 @@ from pathlib import Path
 from typing import List, Union
 from urllib.parse import quote, urljoin, urlparse
 
-from renku.core.utils.zodb import ZODBConnectionHandler
 import BTrees.OOBTree
+import DirectoryStorage.Storage as DirStorage
 import persistent
+import zc.zlibstorage
 from git import Git, GitCommandError
 from marshmallow import EXCLUDE
 from ZODB import DB
-import DirectoryStorage.Storage as DirStorage
-import zc.zlibstorage
 
 from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
@@ -60,6 +59,7 @@ from renku.core.models.provenance.qualified import (
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.plan import Plan
 from renku.core.utils.urls import get_host
+from renku.core.utils.zodb import ZODBConnectionHandler
 
 
 class Activity:
@@ -331,7 +331,7 @@ def _extract_commit_sha(entity_id: str):
     return commit_sha
 
 
-class ActivityCollection(persistent.Persistent):
+class ActivityCollection:
     """Equivalent of a workflow file."""
 
     def __init__(self, activities=None, id=None):

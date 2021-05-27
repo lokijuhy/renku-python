@@ -48,6 +48,7 @@ from renku.core.utils.contexts import measure
 from renku.core.utils.migrate import MigrationType, read_project_version_from_yaml
 from renku.core.utils.scm import git_unicode_unescape
 from renku.core.utils.shacl import validate_graph
+from renku.core.utils.zodb import ZODBConnectionHandler
 
 GRAPH_METADATA_PATHS = [
     Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,
@@ -173,10 +174,27 @@ def _status(client):
     stales = defaultdict(set)
 
     with measure("CALCULATE UPDATES"):
+        import zc.relation.catalog
+        import zc.relation.queryfactory
+
+        factory = zc.relation.queryfactory.TransposingTransitive(zc.relation.RELATION, "dependent_plans")
+
+        connection = ZODBConnectionHandler.get_connection()
+
+        pid_to_path = {pid: path for pid, path, _ in modified}
+
         for plan_id, path, _ in modified:
-            paths = client.dependency_graph.get_dependent_paths(plan_id, path)
+            dependent_plans = connection.root.plan_dependence_catalog.findRelations(
+                {"dependent_plans": zc.relation.catalog.any(*plan_id)}, queryFactory=factory
+            )
+            paths = [o.default_value for p in dependent_plans for o in p.outputs]
             for p in paths:
                 stales[p].add(path)
+
+        # for plan_id, path, _ in modified:
+        #     paths = client.dependency_graph.get_dependent_paths(plan_id, path)
+        #     for p in paths:
+        #         stales[p].add(path)
 
     modified = {v[1] for v in modified}
 
@@ -261,14 +279,22 @@ def _get_modified_paths(client, plans_usages):
     """Get modified and deleted usages/inputs of a plan."""
     modified = set()
     deleted = set()
+    already_checked_cache = {}
     for plan_usage in plans_usages:
         _, path, checksum = plan_usage
         try:
-            current_checksum = client.repo.git.rev_parse(f"HEAD:{str(path)}")
+            if str(path) in already_checked_cache:
+                current_checksum = already_checked_cache[str(path)]
+            else:
+                current_checksum = client.repo.git.rev_parse(f"HEAD:{str(path)}")
+                already_checked_cache[str(path)] = current_checksum
         except GitCommandError:
             deleted.add(plan_usage)
+            already_checked_cache[str(path)] = None
         else:
-            if current_checksum != checksum:
+            if current_checksum == None:
+                deleted.add(plan_usage)
+            elif current_checksum != checksum:
                 modified.add(plan_usage)
 
     return modified, deleted

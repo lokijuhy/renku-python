@@ -22,19 +22,19 @@ from collections import deque
 from pathlib import Path
 from typing import List, Tuple, Union
 
-
-from renku.core.utils.zodb import ZODBConnectionHandler
+import BTrees.OOBTree
 import DirectoryStorage.Storage as DirStorage
-import zc.zlibstorage
 import networkx
 import persistent
 import transaction
+import zc.zlibstorage
 import ZODB
 from marshmallow import EXCLUDE
 
 from renku.core.models import custom
 from renku.core.models.calamus import JsonLDSchema, Nested, schema
 from renku.core.models.workflow.plan import Plan, PlanJsonSchema, PlanSchema
+from renku.core.utils.zodb import ZODBConnectionHandler
 
 
 class DependencyGraph(persistent.Persistent):
@@ -44,18 +44,30 @@ class DependencyGraph(persistent.Persistent):
 
     def __init__(self, plans=None, _plans=None):
         """Initialized."""
-        self._plans = plans or _plans or []
+        connection = ZODBConnectionHandler.get_connection()
+
+        if "plans" not in connection.root():
+            connection.root.plans = BTrees.OOBTree.BTree()
+        if "plan_activity_index" not in connection.root():
+            connection.root.plan_activity_index = BTrees.OOBTree.BTree()
+
+        self._plans = connection.root.plans
+        if not plans and _plans:
+            plans = _plans
+        if plans:
+            for plan in plans:
+                connection.root.plans[plan.id_] = plan
+
         self._path = None
 
         self._graph = networkx.DiGraph()
-        self._graph.add_nodes_from(self._plans)
+        self._graph.add_nodes_from(self._plans.values())
         self._connect_all_nodes()
-        self._zodb_connection = None
 
     @property
     def plans(self):
         """A list of all plans in the graph."""
-        return list(self._plans)
+        return list(self._plans.values())
 
     def add(self, plan: Plan) -> Plan:
         """Add a plan to the graph if a similar plan does not exists."""
@@ -63,13 +75,15 @@ class DependencyGraph(persistent.Persistent):
         if existing_plan:
             return existing_plan
 
-        assert not any([p for p in self._plans if p.name == plan.name]), f"Duplicate name {plan.id_}, {plan.name}"
+        assert not any(
+            [p for p in self._plans.values() if p.name == plan.name]
+        ), f"Duplicate name {plan.id_}, {plan.name}"
         # FIXME it's possible to have the same identifier but different list of arguments (e.g.
         # test_rerun_with_edited_inputs)
-        same_id_found = [p for p in self._plans if p.id_ == plan.id_]
+        same_id_found = self._plans.get(plan.id_)
         if same_id_found:
             plan.assign_new_id()
-        assert not any([p for p in self._plans if p.id_ == plan.id_]), f"Identifier exists {plan.id_}"
+        assert not self._plans.get(plan.id_), f"Identifier exists {plan.id_}"
         self._add_helper(plan)
 
         # FIXME some existing projects have cyclic dependency; make this check outside this model.
@@ -79,12 +93,13 @@ class DependencyGraph(persistent.Persistent):
 
     def _find_similar_plan(self, plan: Plan) -> Union[Plan, None]:
         """Search for a similar plan and return it."""
-        for p in self._plans:
+        # TODO: Use zc.relation
+        for p in self._plans.values():
             if p.is_similar_to(plan):
                 return p
 
     def _add_helper(self, plan: Plan):
-        self._plans.append(plan)
+        self._plans[plan.id_] = plan
 
         self._graph.add_node(plan)
         self._connect_node_to_others(node=plan)
@@ -124,6 +139,7 @@ class DependencyGraph(persistent.Persistent):
 
     def get_dependent_paths(self, plan_id, path):
         """Get a list of downstream paths."""
+
         nodes = deque()
         node: Plan
         for node in self._graph:

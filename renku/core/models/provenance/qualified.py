@@ -17,10 +17,11 @@
 # limitations under the License.
 """Represent elaborated information about relations."""
 
-import weakref
 from urllib.parse import quote
 
 import attr
+import persistent
+import persistent.wref
 from marshmallow import EXCLUDE
 
 from renku.core.models import custom
@@ -90,7 +91,7 @@ class EntityProxyMixin:
 
 
 @attr.s(eq=False, order=False)
-class Usage(EntityProxyMixin):
+class Usage:
     """Represent a dependent path."""
 
     entity = attr.ib(kw_only=True)
@@ -121,7 +122,7 @@ class Usage(EntityProxyMixin):
 
 
 @attr.s(eq=False, order=False)
-class Generation(EntityProxyMixin):
+class Generation:
     """Represent an act of generating a file."""
 
     entity = attr.ib()
@@ -129,7 +130,9 @@ class Generation(EntityProxyMixin):
     role = attr.ib(default=None)
 
     _activity = attr.ib(
-        default=None, kw_only=True, converter=lambda value: weakref.ref(value) if value is not None else None,
+        default=None,
+        kw_only=True,
+        converter=lambda value: persistent.wref.WeakRef(value) if value is not None else None,
     )
     _id = attr.ib(kw_only=True)
 
