@@ -88,10 +88,11 @@ redis:
     enabled: true
     allowExternal: false
 
-## Add sentry configuration
+## Sentry configuration
 sentry:
   dsn:
   environment:
+  tracesSampleRate: 0.2
 
 ## Enable debug mode
 ## WARNING: DO NOT enable this in production as it exposes the service container. It is to be used for

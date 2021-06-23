@@ -76,6 +76,8 @@ spec:
               value: {{ .Values.sentry.dsn }}
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
+            - name: SENTRY_TRACES_SAMPLE_RATE
+              value: {{ .Values.sentry.tracesSampleRate | quote }}
             - name: DEBUG_MODE
               value: {{ .Values.debug | quote }}
             {{ if .Values.nWorkers }}
@@ -138,6 +140,8 @@ spec:
               value: {{ .Values.sentry.dsn }}
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
+            - name: SENTRY_TRACES_SAMPLE_RATE
+              value: {{ .Values.sentry.tracesSampleRate | quote }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ .Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
@@ -175,6 +179,8 @@ spec:
               value: {{ .Values.sentry.dsn }}
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
+            - name: SENTRY_TRACES_SAMPLE_RATE
+              value: {{ .Values.sentry.tracesSampleRate | quote }}
             - name: GIT_LFS_SKIP_SMUDGE
               value: {{ .Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
@@ -204,6 +210,8 @@ spec:
               value: {{ .Values.sentry.dsn }}
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
+            - name: SENTRY_TRACES_SAMPLE_RATE
+              value: {{ .Values.sentry.tracesSampleRate | quote }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

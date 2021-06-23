@@ -51,6 +51,7 @@ if os.getenv("SENTRY_DSN"):
         dsn=os.getenv("SENTRY_DSN"),
         environment=os.getenv("SENTRY_ENV"),
         integrations=[FlaskIntegration(), RqIntegration(), RedisIntegration()],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", 0.2))
     )
 
 
