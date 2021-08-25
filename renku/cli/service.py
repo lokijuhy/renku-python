@@ -26,7 +26,6 @@ from datetime import datetime
 from pathlib import Path
 
 import click
-import psutil
 
 from renku.core.commands.echo import ERROR
 from renku.core.models.tabulate import tabulate
@@ -100,6 +99,8 @@ def check_cmdline(cmdline, include=None):
 
 def is_renku_process(process, include):
     """Return true if this is a renku process."""
+    import psutil
+
     process_name = process.name().lower()
 
     if process_name == "renku" and check_cmdline(process.cmdline(), include):
@@ -124,6 +125,8 @@ def is_renku_process(process, include):
 
 def list_renku_processes(include=None):
     """List renku processes."""
+    import psutil
+
     include = include or []
 
     renku_processes_all = []

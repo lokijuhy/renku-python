@@ -23,8 +23,6 @@ from typing import List
 import click
 import requests
 
-from renku.core.management.config import RENKU_HOME
-
 
 class RenkuException(Exception):
     """A base class for all Renku related exception.
@@ -152,6 +150,9 @@ class DirtyRenkuDirectory(RenkuException):
 
     def __init__(self, repo):
         """Build a custom message."""
+
+        from renku.core.management.config import RENKU_HOME
+
         super(DirtyRenkuDirectory, self).__init__(
             (
                 "The renku directory {0} contains uncommitted changes.\n"

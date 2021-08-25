@@ -18,11 +18,3 @@
 """Renku core modules."""
 
 from __future__ import absolute_import, print_function
-
-from renku.core.management import LocalClient
-from renku.version import __version__
-
-__all__ = (
-    "LocalClient",
-    "__version__",
-)

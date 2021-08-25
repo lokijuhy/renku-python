@@ -37,13 +37,14 @@ filename before ``@``.
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.status import get_status
 
 
 @click.command()
 @click.pass_context
 def status(ctx):
     """Show a status of the repository."""
+    from renku.core.commands.status import get_status
+
     communicator = ClickCallback()
     result = get_status().with_communicator(communicator).build().execute()
 

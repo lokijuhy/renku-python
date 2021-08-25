@@ -103,8 +103,6 @@ from collections import namedtuple
 import click
 
 from renku.cli.utils.callback import ClickCallback
-from renku.core.commands.show import get_inputs, get_outputs, get_siblings
-from renku.core.models.tabulate import tabulate
 
 Result = namedtuple("Result", ["path", "commit", "time", "workflow"])
 HEADERS = {"path": None, "commit": None, "time": "time", "workflow": None}
@@ -125,6 +123,9 @@ def show():
 @click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 def siblings(revision, flat, verbose, paths):
     """Show siblings for given paths."""
+    from renku.core.commands.show import get_inputs, get_outputs, get_siblings
+    from renku.core.models.tabulate import tabulate
+
     communicator = ClickCallback()
 
     result = (
@@ -148,6 +149,9 @@ def inputs(ctx, revision, verbose, paths):
 
     <PATHS>    Files to show. If no files are given all input files are shown.
     """
+    from renku.core.commands.show import get_inputs, get_outputs, get_siblings
+    from renku.core.models.tabulate import tabulate
+
     communicator = ClickCallback()
 
     result = get_inputs().with_communicator(communicator).build().execute(revision=revision, paths=paths)
@@ -174,6 +178,9 @@ def outputs(ctx, revision, verbose, paths):
 
     <PATHS>    Files to show. If no files are given all output files are shown.
     """
+    from renku.core.commands.show import get_inputs, get_outputs, get_siblings
+    from renku.core.models.tabulate import tabulate
+
     communicator = ClickCallback()
 
     result = get_outputs().with_communicator(communicator).build().execute(revision=revision, paths=paths)

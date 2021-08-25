@@ -121,7 +121,6 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.options import option_siblings
-from renku.core.commands.update import update_workflows
 
 
 @click.command()
@@ -132,6 +131,8 @@ from renku.core.commands.update import update_workflows
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 def update(revision, no_output, update_all, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
+    from renku.core.commands.update import update_workflows
+
     communicator = ClickCallback()
 
     update_workflows().with_communicator(communicator).build().execute(

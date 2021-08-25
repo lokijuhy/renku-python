@@ -18,8 +18,6 @@
 """Serializers for workflows."""
 import textwrap
 
-from renku.core.models.json import dumps
-from renku.core.models.workflow.plan import PlanDetailsJson, PlanSchema
 
 from .tabulate import tabulate
 
@@ -42,12 +40,18 @@ def _create_workflow_short_description(workflows):
 
 def jsonld(workflows, **kwargs):
     """Format workflow as JSON-LD."""
+    from renku.core.models.json import dumps
+    from renku.core.models.workflow.plan import PlanDetailsJson, PlanSchema
+
     data = [PlanSchema().dump(workflow) for workflow in workflows]
     return dumps(data, indent=2)
 
 
 def json(workflows, **kwargs):
     """Format workflow as JSON."""
+    from renku.core.models.json import dumps
+    from renku.core.models.workflow.plan import PlanDetailsJson, PlanSchema
+
     data = [PlanDetailsJson().dump(workflow) for workflow in workflows]
     return dumps(data, indent=2)
 

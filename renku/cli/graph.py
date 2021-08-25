@@ -74,8 +74,12 @@ import click
 
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
-from renku.core.commands.format.graph import GRAPH_FORMATS
-from renku.core.commands.graph import export_graph
+
+
+def graph_formats():
+    from renku.core.commands.format.graph import GRAPH_FORMATS
+
+    return GRAPH_FORMATS
 
 
 @click.group(hidden=True)
@@ -84,7 +88,9 @@ def graph():
 
 
 @graph.command()
-@click.option("--format", type=CaseInsensitiveChoice(GRAPH_FORMATS), default="json-ld", help="Choose an output format.")
+@click.option(
+    "--format", type=CaseInsensitiveChoice(lambda: graph_formats()), default="json-ld", help="Choose an output format."
+)
 @click.option(
     "--revision",
     type=str,
@@ -96,6 +102,7 @@ def graph():
 @click.option("--workflows-only", is_flag=True, help="Exclude datasets metadata from export.")
 def export(format, revision, full, strict, workflows_only):
     r"""Export Renku graph metadata for project."""
+    from renku.core.commands.graph import export_graph
 
     if full:
         revision = None

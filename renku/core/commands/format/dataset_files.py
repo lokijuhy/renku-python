@@ -23,7 +23,6 @@ from humanize import naturalsize
 
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
-from renku.core.models.dataset import DatasetFileDetailsJson
 
 from .tabulate import tabulate
 
@@ -122,6 +121,7 @@ def json(records, **kwargs):
     :param records: Filtered collection.
     """
     from renku.core.models.json import dumps
+    from renku.core.models.dataset import DatasetFileDetailsJson
 
     _get_lfs_file_sizes(records)
     _get_lfs_tracking(records)

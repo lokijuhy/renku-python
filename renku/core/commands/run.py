@@ -26,11 +26,9 @@ import click
 from renku.core import errors
 from renku.core.management.command_builder import inject
 from renku.core.management.command_builder.command import Command
-from renku.core.management.git import get_mapped_std_streams
 from renku.core.management.interface.activity_gateway import IActivityGateway
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.interface.plan_gateway import IPlanGateway
-from renku.core.management.workflow.plan_factory import PlanFactory
 from renku.core.models.provenance.activity import Activity
 from renku.core.utils.datetime8601 import local_now
 from renku.core.utils.urls import get_slug
@@ -58,6 +56,9 @@ def _run_command(
     plan_gateway: IPlanGateway,
 ):
     # NOTE: validate name as early as possible
+    from renku.core.management.git import get_mapped_std_streams
+    from renku.core.management.workflow.plan_factory import PlanFactory
+
     client = client_dispatcher.current_client
 
     if name:

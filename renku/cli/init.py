@@ -174,7 +174,6 @@ from git import Repo
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
-from renku.core.commands.init import init_command
 from renku.core.commands.options import option_external_storage_requested
 
 _GITLAB_CI = ".gitlab-ci.yml"
@@ -287,6 +286,8 @@ def init(
     initial_branch,
 ):
     """Initialize a project in PATH. Default is the current path."""
+    from renku.core.commands.init import init_command
+
     data_dir = resolve_data_directory(data_dir, path)
 
     if not check_git_user_config():

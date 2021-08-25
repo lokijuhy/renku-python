@@ -102,10 +102,7 @@ The following values are available for the ``renku config`` command:
 +----------------------------+-------------------------------------+-----------+
 """
 import click
-
 from renku.cli.utils.click import MutuallyExclusiveOption
-from renku.core.commands.config import read_config, update_config
-from renku.core.models.enums import ConfigFilter
 
 
 @click.group()
@@ -145,6 +142,11 @@ def show(key, local_only, global_only, default_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
+
+    from renku.cli.utils.click import MutuallyExclusiveOption
+    from renku.core.commands.config import read_config, update_config
+    from renku.core.models.enums import ConfigFilter
+
     config_filter = ConfigFilter.ALL
 
     if local_only:
@@ -167,6 +169,10 @@ def set_(key, value, global_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
+
+    from renku.core.commands.config import read_config, update_config
+    from renku.core.models.enums import ConfigFilter
+
     update_config().build().execute(key, value=value, global_only=global_only)
     click.secho("OK", fg="green")
 
@@ -179,5 +185,10 @@ def remove(key, global_only):
 
     KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
     """
+
+    from renku.cli.utils.click import MutuallyExclusiveOption
+    from renku.core.commands.config import read_config, update_config
+    from renku.core.models.enums import ConfigFilter
+
     update_config().build().execute(key, remove=True, global_only=global_only)
     click.secho("OK", fg="green")
