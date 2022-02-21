@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -25,6 +25,7 @@ from renku.core import errors
 from renku.core.models.workflow.composite_plan import CompositePlan
 from renku.core.models.workflow.parameter import ParameterMapping
 from renku.core.models.workflow.plan import AbstractPlan, Plan
+from renku.core.utils.template_vars import TemplateVar
 
 
 class ValueResolver(ABC):
@@ -34,6 +35,7 @@ class ValueResolver(ABC):
         self._values = values
         self.missing_parameters: Set[str] = set()
         self._plan = plan
+        self._template_engine = TemplateVar()
 
     @abstractmethod
     def apply(self) -> AbstractPlan:
@@ -69,10 +71,12 @@ class PlanValueResolver(ValueResolver):
             return self._plan
 
         values_keys = set(self._values.keys())
+        params_map = TemplateVar.to_map(chain(self._plan.inputs, self._plan.outputs, self._plan.parameters))
         for param in chain(self._plan.inputs, self._plan.outputs, self._plan.parameters):
             if param.name in self._values:
                 param.actual_value = self._values[param.name]
                 values_keys.discard(param.name)
+            param.actual_value = self._template_engine.apply(param.actual_value, params_map)
 
         self.missing_parameters = values_keys
 

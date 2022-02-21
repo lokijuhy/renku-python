@@ -47,6 +47,7 @@ from renku.core.models.workflow.plan import Plan
 from renku.core.utils.git import is_path_safe
 from renku.core.utils.metadata import is_external_file
 from renku.core.utils.os import get_relative_path
+from renku.core.utils.template_vars import TemplateVar
 
 STARTED_AT = int(time.time() * 1000)
 
@@ -99,12 +100,10 @@ class PlanFactory:
             self.command_line = shlex.split(command_line)
 
         self.success_codes = success_codes or []
+        self.template_engine = TemplateVar()
 
         self.explicit_inputs = (
             [(Path(os.path.abspath(path)), name) for path, name in explicit_inputs] if explicit_inputs else []
-        )
-        self.explicit_outputs = (
-            [(Path(os.path.abspath(path)), name) for path, name in explicit_outputs] if explicit_outputs else []
         )
         self.explicit_parameters = explicit_parameters if explicit_parameters else []
 
@@ -121,6 +120,18 @@ class PlanFactory:
 
         self.add_inputs_and_parameters(*detected_arguments)
 
+        params_map = TemplateVar.to_map(chain(self.inputs, self.parameters, explicit_inputs, explicit_parameters))
+        self.explicit_outputs = (
+            [
+                (
+                    Path(os.path.abspath(self.template_engine.apply(path, params_map))),
+                    name,
+                )
+                for path, name in explicit_outputs
+            ]
+            if explicit_outputs
+            else []
+        )
         self.existing_directories = {}
 
     def split_command_and_args(self):
