@@ -30,6 +30,7 @@ from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.management.command_builder import inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
 from renku.core.utils import communication
+from renku.core.utils.requests import check_response
 
 
 @attr.s
@@ -265,9 +266,9 @@ class _OLOSDeposition:
                 "Maybe you mixed up http and https in the server url?"
             )
 
-        if response.status_code not in [200, 201, 202]:
-            if response.status_code == 401:
-                raise errors.AuthenticationError("Access unauthorized - update access token.")
+        try:
+            check_response(response=response)
+        except errors.RequestError:
             json_res = response.json()
             raise errors.ExportError(
                 "HTTP {} - Cannot export dataset: {}".format(

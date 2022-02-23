@@ -28,10 +28,12 @@ from urllib.parse import urlparse
 import attr
 from tqdm import tqdm
 
+from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
 from renku.core.commands.schema.dataset import dump_dataset_as_jsonld
 from renku.core.metadata.immutable import DynamicProxy
+from renku.core.utils import requests
 from renku.core.utils.file_size import bytes_to_unit
 
 ZENODO_BASE_URL = "https://zenodo.org"
@@ -350,32 +352,26 @@ class ZenodoDeposition:
 
     def new_deposition(self):
         """Create new deposition on Zenodo."""
-        from renku.core.utils import requests
-
         response = requests.post(
             url=self.new_deposit_url, params=self.exporter.default_params, json={}, headers=self.exporter.HEADERS
         )
-        requests.check_response(response)
+        self._check_response(response)
 
         return response
 
     def upload_file(self, filepath, path_in_repo):
         """Upload and attach a file to existing deposition on Zenodo."""
-        from renku.core.utils import requests
-
         request_payload = {"filename": Path(path_in_repo).name}
         file = {"file": (Path(path_in_repo).name, open(str(filepath), "rb"))}
         response = requests.post(
             url=self.upload_file_url, params=self.exporter.default_params, data=request_payload, files=file
         )
-        requests.check_response(response)
+        self._check_response(response)
 
         return response
 
     def attach_metadata(self, dataset, tag):
         """Attach metadata to deposition on Zenodo."""
-        from renku.core.utils import requests
-
         request_payload = {
             "metadata": {
                 "title": dataset.title,
@@ -399,16 +395,14 @@ class ZenodoDeposition:
             data=json.dumps(request_payload),
             headers=self.exporter.HEADERS,
         )
-        requests.check_response(response)
+        self._check_response(response)
 
         return response
 
     def publish_deposition(self, secret):
         """Publish existing deposition."""
-        from renku.core.utils import requests
-
         response = requests.post(url=self.publish_url, params=self.exporter.default_params)
-        requests.check_response(response)
+        self._check_response(response)
 
         return response
 
@@ -416,6 +410,24 @@ class ZenodoDeposition:
         """Post-Init hook to set _id field."""
         response = self.new_deposition()
         self.id = response.json()["id"]
+
+    @staticmethod
+    def _check_response(response):
+        try:
+
+            requests.check_response(response=response)
+        except errors.RequestError:
+            if response.status_code == 400:
+                err_response = response.json()
+                messages = [
+                    '"{0}" failed with "{1}"'.format(err["field"], err["message"]) for err in err_response["errors"]
+                ]
+
+                raise errors.ExportError(
+                    "\n" + "\n".join(messages) + "\nSee `renku dataset edit -h` for details on how to edit" " metadata"
+                )
+            else:
+                raise errors.ExportError(response.content)
 
 
 @attr.s

@@ -42,6 +42,7 @@ from renku.core.metadata.immutable import DynamicProxy
 from renku.core.utils import communication
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.file_size import bytes_to_unit
+from renku.core.utils.requests import check_response
 
 if TYPE_CHECKING:
     from renku.core.commands.providers.models import ProviderDataset
@@ -575,9 +576,9 @@ class _DataverseDeposition:
 
     @staticmethod
     def _check_response(response):
-        if response.status_code not in [200, 201, 202]:
-            if response.status_code == 401:
-                raise errors.AuthenticationError("Access unauthorized - update access token.")
+        try:
+            check_response(response=response)
+        except errors.RequestError:
             json_res = response.json()
             raise errors.ExportError(
                 "HTTP {} - Cannot export dataset: {}".format(
