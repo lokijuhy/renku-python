@@ -21,12 +21,15 @@ from collections import defaultdict
 
 import click
 
+from renku.core.management.command_builder import inject
+from renku.core.management.interface.dataset_gateway import IDatasetGateway
 from renku.core.management.migrations.utils import get_pre_0_3_4_datasets_metadata
 
+from ...utils import communication
 from ..echo import WARNING
 
 
-def check_dataset_metadata(client):
+def check_dataset_old_metadata_location(client, fix):
     """Check location of dataset metadata."""
     old_metadata = get_pre_0_3_4_datasets_metadata(client)
 
@@ -43,7 +46,7 @@ def check_dataset_metadata(client):
     return False, problems
 
 
-def check_missing_files(client):
+def check_missing_files(client, fix):
     """Find missing files listed in datasets."""
     missing = defaultdict(list)
 
@@ -66,5 +69,39 @@ def check_missing_files(client):
             + ":\n\t  "
             + "\n\t  ".join(click.style(path, fg="red") for path in files)
         )
+
+    return False, problems
+
+
+@inject.autoparams()
+def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGateway):
+    """Remove ``derived_from`` from import datasets."""
+    invalid_datasets = []
+
+    for dataset in dataset_gateway.get_provenance_tails():
+        while dataset.derived_from is not None:
+            if dataset.same_as or dataset.derived_from.url_id == dataset.id:
+                if fix:
+                    dataset.unfreeze()
+                    dataset.derived_from = None
+                    dataset.freeze()
+                    communication.info(f"Fixing dataset '{dataset.name}'")
+                else:
+                    invalid_datasets.append(dataset.name)
+
+                break
+
+            dataset = dataset_gateway.get_by_id(dataset.derived_from.url_id)
+
+    if not invalid_datasets:
+        return True, None
+
+    problems = (
+        WARNING
+        + "There are invalid dataset metadata in the project (use 'renku doctor --fix' to fix them):"
+        + "\n\n\t"
+        + "\n\t".join(click.style(name, fg="yellow") for name in invalid_datasets)
+        + "\n"
+    )
 
     return False, problems

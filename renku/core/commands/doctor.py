@@ -18,6 +18,7 @@
 """Check your system and repository for potential problems."""
 import traceback
 
+from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.echo import ERROR
 from renku.core.management.command_builder.command import Command, inject
 from renku.core.management.interface.client_dispatcher import IClientDispatcher
@@ -30,7 +31,7 @@ and if in doubt ask an expert around or file an issue. Thanks!
 
 
 @inject.autoparams()
-def _doctor_check(client_dispatcher: IClientDispatcher):
+def _doctor_check(fix, client_dispatcher: IClientDispatcher):
     """Check your system and repository for potential problems."""
     from . import checks
 
@@ -41,7 +42,7 @@ def _doctor_check(client_dispatcher: IClientDispatcher):
 
     for check in checks.__all__:
         try:
-            ok, problems_ = getattr(checks, check)(client)
+            ok, problems_ = getattr(checks, check)(client=client, fix=fix)
         except Exception:
             ok = False
             tb = "\n\t".join(traceback.format_exc().split("\n"))
@@ -55,6 +56,20 @@ def _doctor_check(client_dispatcher: IClientDispatcher):
     return is_ok, "\n".join(problems)
 
 
-def doctor_check_command():
+def doctor_check_command(with_fix):
     """Command to check your system and repository for potential problems."""
-    return Command().command(_doctor_check).with_database()
+    communicator = ClickCallback()
+
+    if with_fix:
+        return (
+            Command()
+            .command(_doctor_check)
+            .with_communicator(communicator)
+            .lock_project()
+            .with_database(write=True)
+            .require_migration()
+            .require_clean()
+            .with_commit()
+        )
+    else:
+        return Command().command(_doctor_check).with_database()

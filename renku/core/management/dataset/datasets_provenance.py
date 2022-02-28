@@ -68,7 +68,7 @@ class DatasetsProvenance:
 
     def get_previous_version(self, dataset: Dataset) -> Optional[Dataset]:
         """Return the previous version of a dataset if any."""
-        if not dataset.derived_from:
+        if not dataset.derived_from or dataset.same_as:
             return
         return self.get_by_id(dataset.derived_from.url_id)
 

@@ -32,12 +32,13 @@ import renku.cli.utils.color as color
 
 @click.command()
 @click.pass_context
-def doctor(ctx):
+@click.option("--fix", is_flag=True, help="Fix issues when possible.")
+def doctor(ctx, fix):
     """Check your system and repository for potential problems."""
     from renku.core.commands.doctor import DOCTOR_INFO, doctor_check_command
 
     click.secho("\n".join(textwrap.wrap(DOCTOR_INFO)) + "\n", bold=True)
-    is_ok, problems = doctor_check_command().build().execute().output
+    is_ok, problems = doctor_check_command(with_fix=fix).build().execute(fix=fix).output
 
     if is_ok:
         click.secho("Everything seems to be ok.", fg=color.GREEN)

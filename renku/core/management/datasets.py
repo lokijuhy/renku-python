@@ -790,9 +790,10 @@ class DatasetsApiMixin(object):
             communication.finalize_progress(progress_name)
 
         datasets_provenance = DatasetsProvenance()
-        for dataset in modified_datasets.values():
+        modified_datasets = list(modified_datasets.values())
+        for dataset in modified_datasets:
             datasets_provenance.add_or_update(dataset, creator=get_git_user(self.repository))
-        if to_dataset:
+        if to_dataset and to_dataset not in modified_datasets:
             datasets_provenance.add_or_update(to_dataset, creator=get_git_user(self.repository))
 
     def update_dataset_local_files(self, records: List[DynamicProxy], delete=False):

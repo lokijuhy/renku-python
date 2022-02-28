@@ -21,7 +21,7 @@ import click
 from renku.core.commands.echo import WARNING
 
 
-def check_missing_external_files(client):
+def check_missing_external_files(client, fix):
     """Find external files that are missing."""
     missing = []
 

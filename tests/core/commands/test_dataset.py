@@ -106,7 +106,7 @@ def test_creator_parse():
 
 def test_creators_with_same_email(client_with_injection, load_dataset_with_injection):
     """Test creators with different names and same email address."""
-    with client_with_injection.with_dataset(name="dataset", create=True, commit_database=True) as dataset:
+    with client_with_injection.with_dataset(name="dataset", create=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
         DatasetsProvenance().add_or_update(dataset)
 

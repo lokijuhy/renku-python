@@ -55,7 +55,7 @@ def _shacl_graph_to_string(graph):
     return "\n\t".join(problems)
 
 
-def check_project_structure(client):
+def check_project_structure(client, fix):
     """Validate project metadata against SHACL."""
     data = ProjectSchema().dump(client.project)
 
@@ -69,7 +69,7 @@ def check_project_structure(client):
     return False, problems
 
 
-def check_datasets_structure(client):
+def check_datasets_structure(client, fix):
     """Validate dataset metadata against SHACL."""
     ok = True
 
