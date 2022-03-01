@@ -105,6 +105,7 @@ def test_log_dataset_create_simple(mocker):
     new_dataset.dataset_files = []
     new_dataset.date_removed = None
     new_dataset.date_modified = datetime.utcnow()
+    new_dataset.is_derivation.return_value = False
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -160,6 +161,7 @@ def test_log_dataset_create_complex(mocker):
     new_dataset.images = [mocker.MagicMock(content_url="./img/img1.png")]
     new_dataset.date_removed = None
     new_dataset.date_modified = datetime.utcnow()
+    new_dataset.is_derivation.return_value = False
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -217,6 +219,7 @@ def test_log_dataset_add_create(mocker):
     ]
     new_dataset.date_removed = None
     new_dataset.date_modified = datetime.utcnow()
+    new_dataset.is_derivation.return_value = False
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -273,6 +276,7 @@ def test_log_dataset_import(mocker):
     ]
     new_dataset.date_removed = None
     new_dataset.date_modified = datetime.utcnow()
+    new_dataset.is_derivation.return_value = False
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -323,6 +327,7 @@ def test_log_dataset_deleted(mocker):
     old_dataset.derived_from = None
     old_dataset.same_as = None
     old_dataset.dataset_files = []
+    old_dataset.is_derivation.return_value = False
 
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
@@ -333,6 +338,7 @@ def test_log_dataset_deleted(mocker):
     new_dataset.same_as = None
     new_dataset.dataset_files = []
     new_dataset.date_removed = datetime.utcnow()
+    new_dataset.is_derivation.return_value = True
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -398,6 +404,7 @@ def test_log_dataset_files_removed(mocker):
         mocker.MagicMock(date_removed=None, entity=mocker.MagicMock(path="file_a")),
         mocker.MagicMock(date_removed=None, entity=mocker.MagicMock(path="file_b")),
     ]
+    old_dataset.is_derivation.return_value = False
 
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
@@ -409,6 +416,7 @@ def test_log_dataset_files_removed(mocker):
     new_dataset.dataset_files = [old_dataset.dataset_files[0]]
     new_dataset.date_modified = datetime.utcnow()
     new_dataset.date_removed = None
+    new_dataset.is_derivation.return_value = True
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
@@ -475,6 +483,7 @@ def test_log_dataset_metadata_modified(mocker):
     old_dataset.derived_from = None
     old_dataset.same_as = None
     old_dataset.dataset_files = []
+    old_dataset.is_derivation.return_value = False
 
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
@@ -489,6 +498,7 @@ def test_log_dataset_metadata_modified(mocker):
     new_dataset.dataset_files = []
     new_dataset.date_modified = datetime.utcnow()
     new_dataset.date_removed = None
+    new_dataset.is_derivation.return_value = True
 
     dataset_gateway = mocker.MagicMock()
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
