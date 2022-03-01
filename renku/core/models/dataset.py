@@ -400,6 +400,10 @@ class Dataset(Persistent):
         """Comma-separated list of keywords associated with dataset."""
         return ", ".join(self.keywords)
 
+    def is_derivation(self) -> bool:
+        """Return if a dataset has correct derived_form."""
+        return self.derived_from and not self.same_as and self.id != self.derived_from.url_id
+
     def copy(self) -> "Dataset":
         """Return a clone of this dataset."""
         try:

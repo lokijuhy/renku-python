@@ -48,7 +48,7 @@ def _log(
         while current_dataset:
             yield current_dataset
 
-            if current_dataset.derived_from and not current_dataset.same_as:
+            if current_dataset.is_derivation():
                 current_dataset = dataset_gateway.get_by_id(current_dataset.derived_from.url_id)
             else:
                 return

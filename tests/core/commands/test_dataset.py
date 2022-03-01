@@ -57,7 +57,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         if path == "temp":
             path = str(directory_tree / "file1")
 
-        with client_with_injection.with_dataset(name="dataset", create=True, commit_database=True) as d:
+        with client_with_injection.with_dataset(name="dataset", create=True) as d:
             d.creators = [Person(name="me", email="me@example.com", id="me_id")]
             client_with_injection.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=overwrite)
 
@@ -75,6 +75,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         if scheme in ("", "file://"):
             shutil.rmtree("./data/dataset")
             with client_with_injection.with_dataset(name="dataset") as d:
+                d = d.copy()
                 d.creators = [Person(name="me", email="me@example.com", id="me_id")]
                 client_with_injection.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=True)
             assert os.path.exists(target_path)
